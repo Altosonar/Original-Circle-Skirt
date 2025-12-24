@@ -10,6 +10,7 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: manipulation;
         }
         
         body {
@@ -99,6 +100,46 @@
             width: 100%;
             height: 40px;
         }
+
+        .dot-selector-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 10px 5px;
+        }
+
+        .dot-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            flex: 1;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid #3498db;
+            background: white;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+
+        .dot-option.active .dot {
+            background: #3498db;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.6);
+        }
+
+        .dot-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+            white-space: nowrap;
+        }
         
         .slider-value {
             min-width: 28px;
@@ -121,8 +162,8 @@
         .range-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 24.36px;
-            height: 24.36px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             background: #3498db;
             cursor: pointer;
@@ -131,8 +172,8 @@
         }
 
         .range-slider::-moz-range-thumb {
-            width: 24.36px;
-            height: 24.36px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             background: #3498db;
             cursor: pointer;
@@ -159,46 +200,6 @@
             width: 100%;
             height: 100%;
         }
-
-        /* Interactive Type Labels - Positioned at corners and bottom middle */
-        .skirt-type-label {
-            position: absolute;
-            padding: 6px 10px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #3498db;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #3498db;
-            cursor: pointer;
-            transition: all 0.2s;
-            z-index: 10;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* Manual positioning for corners and bottom center */
-        .skirt-type-label[data-type="full"] { top: 15px; left: 15px; }
-        .skirt-type-label[data-type="three-quarter"] { top: 15px; right: 15px; }
-        .skirt-type-label[data-type="half"] { bottom: 15px; left: 15px; }
-        .skirt-type-label[data-type="third"] { bottom: 15px; right: 15px; }
-        .skirt-type-label[data-type="quarter"] { bottom: 15px; left: 50%; transform: translateX(-50%); }
-
-        .skirt-type-label:hover {
-            background: #3498db;
-            color: white;
-            transform: scale(1.1);
-        }
-
-        /* Specific transform for the middle button to maintain centering on hover */
-        .skirt-type-label[data-type="quarter"]:hover {
-            transform: translateX(-50%) scale(1.1);
-        }
-
-        .skirt-type-label.active {
-            background: #3498db;
-            color: white;
-            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
-        }
         
         .panel-controls {
             display: grid;
@@ -209,7 +210,7 @@
         }
         
         .panel-btn {
-            padding: 10px 5px;
+            padding: 12px 5px;
             background: #3498db;
             color: white;
             border: none;
@@ -217,6 +218,7 @@
             cursor: pointer;
             font-size: 15px; 
             font-weight: 600;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .panel-btn:hover { background: #2980b9; }
@@ -265,12 +267,13 @@
         
         .action-btn {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: none;
             border-radius: 3px;
             cursor: pointer;
             font-weight: 500;
             font-size: 20px; 
+            -webkit-tap-highlight-color: transparent;
         }
         
         .reset-btn { background: #95a5a6; color: white; }
@@ -279,9 +282,14 @@
         .preview-btn:hover { background: #27ae60; }
         
         @media (max-width: 768px) {
-            .calculator-container { grid-template-columns: 1fr; }
+            .calculator-container { grid-template-columns: 1fr; gap: 8px; }
+            .visual-section { margin-bottom: 0; padding-bottom: 12px; }
             .form-row { grid-template-columns: 1fr; }
             .canvas-container { min-height: 400px; }
+            .panel-controls { margin-top: 8px; gap: 6px; }
+            .panel-btn { font-size: 13px; padding: 14px 4px; }
+            .input-section { margin-top: 0; }
+            .dot { width: 44px; height: 44px; } /* Slightly larger for mobile tap targets */
         }
     </style>
 </head>
@@ -291,11 +299,6 @@
             <h2>Pattern Preview (Select 1 or 2 panels)</h2>
             <div class="canvas-container" id="container">
                 <canvas id="skirtCanvas"></canvas>
-                <div class="skirt-type-label" data-type="full">Full Circle</div>
-                <div class="skirt-type-label" data-type="three-quarter">3/4 Circle</div>
-                <div class="skirt-type-label" data-type="half">Half Circle</div>
-                <div class="skirt-type-label" data-type="third">1/3 Circle</div>
-                <div class="skirt-type-label" data-type="quarter">1/4 Circle</div>
             </div>
             <div class="panel-controls">
                 <button class="panel-btn secondary" id="splitSingle">Split Selected</button>
@@ -310,6 +313,31 @@
         <div class="input-section">
             <h2>Skirt Settings</h2>
             
+            <div class="form-group">
+                <div class="dot-selector-container">
+                    <div class="dot-option" data-type="full">
+                        <div class="dot"></div>
+                        <span class="dot-label">Full</span>
+                    </div>
+                    <div class="dot-option" data-type="three-quarter">
+                        <div class="dot"></div>
+                        <span class="dot-label">3/4</span>
+                    </div>
+                    <div class="dot-option" data-type="half">
+                        <div class="dot"></div>
+                        <span class="dot-label">Half</span>
+                    </div>
+                    <div class="dot-option" data-type="third">
+                        <div class="dot"></div>
+                        <span class="dot-label">1/3</span>
+                    </div>
+                    <div class="dot-option" data-type="quarter">
+                        <div class="dot"></div>
+                        <span class="dot-label">1/4</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-row">
                 <div>
                     <div class="form-group">
@@ -419,7 +447,7 @@
             }
             
             initElements() {
-                this.skirtTypeLabels = document.querySelectorAll('.skirt-type-label');
+                this.dotOptions = document.querySelectorAll('.dot-option');
                 this.skirtType = 'full';
                 
                 this.seamsInput = document.getElementById('seams');
@@ -441,7 +469,6 @@
                 this.waistArcEl = document.getElementById('waistArc');
                 
                 this.resetBtn = document.getElementById('resetBtn');
-                this.previewBtn = document.getElementById('previewBtn');
                 this.undoBtn = document.getElementById('undoAction');
                 
                 this.canvas = document.getElementById('skirtCanvas');
@@ -457,8 +484,8 @@
             setSkirtType(type) {
                 this.skirtType = type;
                 this.customPanels = null;
-                this.skirtTypeLabels.forEach(label => {
-                    label.classList.toggle('active', label.dataset.type === type);
+                this.dotOptions.forEach(opt => {
+                    opt.classList.toggle('active', opt.dataset.type === type);
                 });
             }
             
@@ -466,9 +493,6 @@
                 const rect = this.canvas.parentNode.getBoundingClientRect();
                 this.canvas.width = rect.width;
                 this.canvas.height = rect.height;
-                this.canvas.removeEventListener('mousedown', this.handleCanvasClick);
-                this.canvas.addEventListener('mousedown', (e) => this.handleCanvasClick(e));
-                // positioning is handled by CSS now for the requested corner/bottom layout
             }
 
             saveState() {
@@ -570,10 +594,10 @@
             }
 
             bindEvents() {
-                this.skirtTypeLabels.forEach(label => {
-                    label.addEventListener('click', () => {
+                this.dotOptions.forEach(opt => {
+                    opt.addEventListener('click', () => {
                         this.saveState();
-                        this.setSkirtType(label.dataset.type);
+                        this.setSkirtType(opt.dataset.type);
                         this.calculate();
                     });
                 });
@@ -619,6 +643,14 @@
                     }
                 });
                 
+                // Add touch support for mobile
+                this.canvas.addEventListener('mousedown', (e) => this.handleCanvasClick(e));
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.handleCanvasClick(touch);
+                }, { passive: false });
+
                 window.addEventListener('resize', () => {
                     this.initCanvas();
                     this.calculate();
@@ -650,10 +682,17 @@
                     case 'quarter': waistRadius = adjustedWaist / (0.5 * Math.PI); break;
                 }
                 const totalRadius = waistRadius + parseFloat(this.lengthInput.value) + parseFloat(this.hemInput.value);
-                const scale = Math.min(centerX, centerY) * 0.75 / totalRadius;
+                
+                const scale = Math.min(centerX, centerY) * 0.95 / totalRadius;
 
                 if (dist >= waistRadius * scale && dist <= totalRadius * scale) {
-                    const clickedIdx = this.panels.findIndex(p => angle >= p.startAngle && angle <= p.endAngle);
+                    const clickedIdx = this.panels.findIndex(p => {
+                        let start = p.startAngle;
+                        let end = p.endAngle;
+                        if (start > end) return angle >= start || angle <= end;
+                        return angle >= start && angle <= end;
+                    });
+                    
                     if (clickedIdx !== -1) {
                         if (this.selectedIndex === clickedIdx) {
                             this.selectedIndex = this.secondSelectedIndex;
@@ -759,7 +798,7 @@
                 } else {
                     this.panels = [];
                     const angleStep = totalAngle / this.seams;
-                    for (let i = 0; i < this.seams; i++) {
+                    for(let i = 0; i < this.seams; i++) {
                         this.panels.push({
                             id: i + 1,
                             startAngle: i * angleStep,
@@ -770,71 +809,73 @@
                     }
                 }
             }
-            
+
             drawSkirt(waistRadius, totalRadius) {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
-                const maxRadius = Math.max(waistRadius, totalRadius);
-                const scale = Math.min(centerX, centerY) * 0.75 / maxRadius;
+                const scale = Math.min(centerX, centerY) * 0.95 / totalRadius;
                 
-                this.panels.forEach((panel, idx) => {
-                    const isSelected = (idx === this.selectedIndex || idx === this.secondSelectedIndex);
-                    this.ctx.strokeStyle = isSelected ? '#e67e22' : '#3498db';
-                    this.ctx.lineWidth = isSelected ? 4 : 2;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.panels.forEach((panel, index) => {
+                    const isSelected = index === this.selectedIndex || index === this.secondSelectedIndex;
                     
                     this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, panel.totalRadius * scale, panel.startAngle, panel.endAngle);
-                    this.ctx.stroke();
+                    this.ctx.arc(centerX, centerY, totalRadius * scale, panel.startAngle, panel.endAngle);
+                    this.ctx.arc(centerX, centerY, waistRadius * scale, panel.endAngle, panel.startAngle, true);
+                    this.ctx.closePath();
                     
-                    this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, panel.waistRadius * scale, panel.startAngle, panel.endAngle);
+                    this.ctx.fillStyle = isSelected ? '#3498db' : '#ecf0f1';
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = isSelected ? '#2980b9' : '#bdc3c7';
+                    this.ctx.lineWidth = isSelected ? 3 : 1;
                     this.ctx.stroke();
-                    
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(centerX + panel.waistRadius * scale * Math.cos(panel.startAngle), centerY + panel.waistRadius * scale * Math.sin(panel.startAngle));
-                    this.ctx.lineTo(centerX + panel.totalRadius * scale * Math.cos(panel.startAngle), centerY + panel.totalRadius * scale * Math.sin(panel.startAngle));
-                    this.ctx.stroke();
-                    
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(centerX + panel.waistRadius * scale * Math.cos(panel.endAngle), centerY + panel.waistRadius * scale * Math.sin(panel.endAngle));
-                    this.ctx.lineTo(centerX + panel.totalRadius * scale * Math.cos(panel.endAngle), centerY + panel.totalRadius * scale * Math.sin(panel.endAngle));
-                    this.ctx.stroke();
-                    
-                    const midAngle = (panel.startAngle + panel.endAngle) / 2;
-                    const labelRadius = (panel.waistRadius + (panel.totalRadius - panel.waistRadius) / 2) * scale;
-                    this.ctx.fillStyle = isSelected ? '#e67e22' : '#7f8c8d';
-                    this.ctx.font = isSelected ? 'bold 12px Arial' : '10px Arial';
+
+                    // Text labels
+                    const midAngle = (panel.startAngle + (panel.startAngle > panel.endAngle ? panel.endAngle + 2*Math.PI : panel.endAngle)) / 2;
+                    const textRadius = (waistRadius + totalRadius) / 2 * scale;
+                    this.ctx.save();
+                    this.ctx.translate(centerX + Math.cos(midAngle) * textRadius, centerY + Math.sin(midAngle) * textRadius);
+                    this.ctx.fillStyle = isSelected ? 'white' : '#7f8c8d';
+                    this.ctx.font = 'bold 12px sans-serif';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText(`P${panel.id}`, centerX + labelRadius * Math.cos(midAngle), centerY + labelRadius * Math.sin(midAngle));
+                    this.ctx.fillText(panel.id, 0, 5);
+                    this.ctx.restore();
                 });
             }
-            
+
             reset() {
                 this.saveState();
-                this.customPanels = null;
-                this.waistInput.value = 38.5;
-                this.lengthInput.value = 22;
+                this.setSkirtType('full');
+                this.seams = 12;
+                this.seamsInput.value = 12;
+                this.seamsValue.textContent = 12;
+                document.getElementById('seamsSlider').value = 12;
                 this.sideSeamInput.value = 0.375;
+                this.lengthInput.value = 22;
+                this.waistInput.value = 38.5;
                 this.waistSeamInput.value = 0.375;
                 this.hemInput.value = 1.5;
-                this.seamsInput.value = 12;
-                this.seams = 12;
-                this.setSkirtType('full');
+                this.customPanels = null;
                 this.selectedIndex = null;
                 this.secondSelectedIndex = null;
                 
-                document.querySelectorAll('.range-slider').forEach(slider => {
-                    const inputId = slider.id.replace('Slider', '');
-                    slider.value = document.getElementById(inputId).value;
-                    document.getElementById(slider.id.replace('Slider', 'Value')).textContent = slider.value;
+                const sliderPairs = ['sideSeam', 'length', 'waist', 'waistSeam', 'hem'];
+                sliderPairs.forEach(id => {
+                    const input = document.getElementById(id);
+                    const slider = document.getElementById(id + 'Slider');
+                    const display = document.getElementById(id + 'Value');
+                    slider.value = input.value;
+                    display.textContent = input.value;
                 });
                 
                 this.calculate();
             }
         }
 
-        window.onload = () => new CircleSkirtCalculator();
+        document.addEventListener('DOMContentLoaded', () => {
+            window.app = new CircleSkirtCalculator();
+        });
     </script>
 </body>
 </html>
