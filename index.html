@@ -229,11 +229,25 @@
         .panel-btn.undo:hover { background: #636e72; }
         .panel-btn:disabled { background: #ccc; cursor: not-allowed; }
         
+        .results-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        
         .results-box {
             background: #f8f9fa;
             border-radius: 3px;
             padding: 12px;
-            margin: 12px 0;
+        }
+        
+        .measurements-box {
+            background: #f8f9fa;
+            border-radius: 3px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
         .result-item {
@@ -258,6 +272,46 @@
             font-size: 22px; 
             font-weight: 600;
             color: #2c3e50;
+        }
+        
+        .panel-measurements {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            font-size: 11px;
+            max-width: 180px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none; /* Hidden since we moved it to the input section */
+        }
+        
+        .measurements-header {
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 3px;
+        }
+        
+        .panel-measurement-item {
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .panel-number {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .measurement-value {
+            font-weight: 600;
+            color: #e74c3c;
         }
         
         .action-buttons {
@@ -316,8 +370,8 @@
             
             .form-row { grid-template-columns: 1fr; }
             .canvas-container { 
-                min-height: 250px; 
-                max-height: 40vh;
+                min-height: 300px; 
+                max-height: 50vh;
                 border-left: none; 
                 border-right: none; 
                 border-radius: 0;
@@ -334,13 +388,19 @@
             }
             
             .input-section { 
-                margin-top: 500px; 
+                margin-top: 520px; 
                 padding: 12px; 
                 border-radius: 0; 
                 position: relative;
                 z-index: 1;
             }
             
+            /* Increased dimension for Full and 3/4 circle buttons on mobile */
+            .dot-option[data-type="full"] .dot, 
+            .dot-option[data-type="three-quarter"] .dot { 
+                width: 58px; 
+                height: 58px; 
+            }
             .dot { width: 44px; height: 44px; }
 
             .input-with-slider {
@@ -355,6 +415,45 @@
             .slider-container {
                 flex-grow: 1;
                 height: 30px;
+            }
+            
+            .results-container {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .canvas-container {
+                min-height: 280px;
+            }
+            
+            .dot-option[data-type="full"] .dot, 
+            .dot-option[data-type="three-quarter"] .dot { 
+                width: 48px; 
+                height: 48px; 
+            }
+            .dot { width: 36px; height: 36px; }
+            
+            .dot-label {
+                font-size: 10px;
+            }
+        }
+        
+        /* PDF print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .pdf-container, .pdf-container * {
+                visibility: visible;
+            }
+            .pdf-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                padding: 20px;
             }
         }
     </style>
@@ -478,24 +577,35 @@
             </div>
             
             <h2>Results</h2>
-            <div class="results-box">
-                <div class="result-item">
-                    <div class="result-label">Waist Radius</div>
-                    <div class="result-value" id="waistRadius">6.25"</div>
+            <div class="results-container">
+                <div class="results-box">
+                    <div class="result-item">
+                        <div class="result-label">Waist Radius</div>
+                        <div class="result-value" id="waistRadius">6.25"</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Total Radius</div>
+                        <div class="result-value" id="totalRadius">29.75"</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Total Waist Arc</div>
+                        <div class="result-value" id="waistArc">43.75"</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Total Hem Arc</div>
+                        <div class="result-value" id="totalHemArc">187.07"</div>
+                    </div>
                 </div>
-                <div class="result-item">
-                    <div class="result-label">Total Radius</div>
-                    <div class="result-value" id="totalRadius">29.75"</div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Total Waist Arc</div>
-                    <div class="result-value" id="waistArc">43.75"</div>
+                
+                <div class="measurements-box" id="measurementsBox">
+                    <div class="measurements-header">Panel Measurements</div>
+                    <div id="measurementsList"></div>
                 </div>
             </div>
             
             <div class="action-buttons">
                 <button class="action-btn reset-btn" id="resetBtn">RESET</button>
-                <button class="action-btn preview-btn" id="previewBtn">PREVIEW / PRINT</button>
+                <button class="action-btn preview-btn" id="previewBtn">DOWNLOAD PDF</button>
             </div>
         </div>
     </div>
@@ -506,6 +616,7 @@
                 this.history = [];
                 this.selectedIndex = null;
                 this.secondSelectedIndex = null;
+                this.panelMeasurements = [];
                 this.initElements();
                 this.initCanvas();
                 this.bindEvents();
@@ -532,7 +643,9 @@
                 this.waistRadiusEl = document.getElementById('waistRadius');
                 this.totalRadiusEl = document.getElementById('totalRadius');
                 this.waistArcEl = document.getElementById('waistArc');
+                this.totalHemArcEl = document.getElementById('totalHemArc');
                 this.resetBtn = document.getElementById('resetBtn');
+                this.resetPanelsBtn = document.getElementById('resetPanels');
                 this.undoBtn = document.getElementById('undoAction');
                 this.canvas = document.getElementById('skirtCanvas');
                 this.ctx = this.canvas.getContext('2d');
@@ -684,65 +797,232 @@
                 this.undoBtn.disabled = this.history.length === 0;
             }
 
-            splitSinglePanel(index) {
-                const target = this.panels[index];
-                const mid = (target.startAngle + target.endAngle) / 2;
-                let newProportions = [];
-                this.panels.forEach((p, i) => {
-                    if (i === index) {
-                        newProportions.push({ start: p.startAngle, end: mid });
-                        newProportions.push({ start: mid, end: p.endAngle });
-                    } else newProportions.push({ start: p.startAngle, end: p.endAngle });
-                });
-                this.customPanels = newProportions;
-                this.updateSeamCount(newProportions.length);
-                this.selectedIndex = null;
-                this.secondSelectedIndex = null;
+            updateSeamCount(val) {
+                this.seams = val;
+                this.seamsInput.value = val;
+                this.seamsValue.textContent = val;
+                document.getElementById('seamsSlider').value = val;
+                this.calculate();
             }
 
-            mergeTwoPanels(idx1, idx2) {
-                if (this.panels.length <= 1) return;
-                const first = Math.min(idx1, idx2);
-                const last = Math.max(idx1, idx2);
-                const isAdjacent = (last === first + 1);
-                const isWrap = (first === 0 && last === this.panels.length - 1);
-                if (!isAdjacent && !isWrap) return;
-
-                let newProportions = [];
-                if (isWrap) {
-                    newProportions.push({ start: this.panels[last].startAngle, end: this.panels[first].endAngle });
-                    for(let i = 1; i < last; i++) {
-                        newProportions.push({ start: this.panels[i].startAngle, end: this.panels[i].endAngle });
-                    }
-                } else {
-                    for(let i = 0; i < this.panels.length; i++) {
-                        if (i === first) {
-                            newProportions.push({ start: this.panels[first].startAngle, end: this.panels[last].endAngle });
-                            i++; 
-                        } else {
-                            newProportions.push({ start: this.panels[i].startAngle, end: this.panels[i].endAngle });
-                        }
-                    }
+            getSkirtBounds(multiplier, totalRadius) {
+                const points = [];
+                const steps = 50;
+                for (let i = 0; i <= steps; i++) {
+                    const angle = (i / steps) * multiplier * Math.PI;
+                    points.push({
+                        x: Math.cos(angle) * totalRadius,
+                        y: Math.sin(angle) * totalRadius
+                    });
                 }
-                this.customPanels = newProportions;
-                this.updateSeamCount(newProportions.length);
-                this.selectedIndex = null;
-                this.secondSelectedIndex = null;
+                const minX = Math.min(...points.map(p => p.x), 0);
+                const maxX = Math.max(...points.map(p => p.x), 0);
+                const minY = Math.min(...points.map(p => p.y), 0);
+                const maxY = Math.max(...points.map(p => p.y), 0);
+                return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
             }
 
-            splitAllPanels() {
-                this.customPanels = null;
-                this.updateSeamCount(this.seams * 2);
+            calculate() {
+                const waist = parseFloat(this.waistInput.value);
+                const sideSeam = parseFloat(this.sideSeamInput.value);
+                const length = parseFloat(this.lengthInput.value);
+                const hem = parseFloat(this.hemInput.value);
+                const waistSeam = parseFloat(this.waistSeamInput.value);
+
+                let multiplier;
+                switch(this.skirtType) {
+                    case 'full': multiplier = 2; break;
+                    case 'three-quarter': multiplier = 1.5; break;
+                    case 'half': multiplier = 1; break;
+                    case 'third': multiplier = 0.666; break;
+                    case 'quarter': multiplier = 0.5; break;
+                }
+
+                const adjustedWaist = waist + (sideSeam * 2);
+                const waistRadius = adjustedWaist / (multiplier * Math.PI);
+                const totalRadius = waistRadius + length + hem;
+                const waistArc = adjustedWaist + (waistSeam * 2);
+                const totalHemArc = (totalRadius * multiplier * Math.PI);
+
+                this.waistRadiusEl.textContent = waistRadius.toFixed(2) + '"';
+                this.totalRadiusEl.textContent = totalRadius.toFixed(2) + '"';
+                this.waistArcEl.textContent = waistArc.toFixed(2) + '"';
+                this.totalHemArcEl.textContent = totalHemArc.toFixed(2) + '"';
+
+                this.draw(multiplier, waistRadius, totalRadius, waistSeam, hem);
             }
 
-            mergeAllPanels() {
-                this.customPanels = null;
-                if (this.seams > 1) this.updateSeamCount(Math.floor(this.seams / 2) || 1);
+            draw(multiplier, waistRadius, totalRadius, waistSeam, hem) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Apply rotation for half, third, and quarter circles to better fit container
+                let rotationAngle = 0;
+                if (this.skirtType === 'half') {
+                    rotationAngle = Math.PI / 4; // 45 degrees for half circle
+                } else if (this.skirtType === 'third') {
+                    rotationAngle = Math.PI / 3; // 60 degrees for 1/3 circle
+                } else if (this.skirtType === 'quarter') {
+                    rotationAngle = Math.PI / 4; // 45 degrees for quarter circle
+                }
+                
+                // Calculate bounds with rotation
+                const bounds = this.getRotatedBounds(multiplier, waistRadius, totalRadius, rotationAngle);
+                const padding = window.innerWidth <= 768 ? 10 : 20;
+                const availableWidth = this.canvas.width - padding * 2;
+                const availableHeight = this.canvas.height - padding * 2;
+                
+                // Scale factor to fill screen - slightly boosted on mobile
+                const baseScale = Math.min(availableWidth / bounds.width, availableHeight / bounds.height);
+                const scale = window.innerWidth <= 768 ? baseScale * 1.1 : baseScale;
+                
+                // Center the drawing
+                const offsetX = (this.canvas.width / 2) - ((bounds.minX + bounds.maxX) / 2 * scale);
+                const offsetY = (this.canvas.height / 2) - ((bounds.minY + bounds.maxY) / 2 * scale);
+
+                const panelCount = this.customPanels ? this.customPanels.length : this.seams;
+                this.panels = [];
+                this.panelMeasurements = [];
+
+                for (let i = 0; i < panelCount; i++) {
+                    let startAngle, endAngle;
+                    if (this.customPanels) {
+                        startAngle = this.customPanels[i].start;
+                        endAngle = this.customPanels[i].end;
+                    } else {
+                        const panelSize = (multiplier * Math.PI) / panelCount;
+                        startAngle = i * panelSize;
+                        endAngle = (i + 1) * panelSize;
+                    }
+
+                    // Apply rotation
+                    const rotatedStartAngle = startAngle + rotationAngle;
+                    const rotatedEndAngle = endAngle + rotationAngle;
+
+                    this.panels.push({ startAngle: rotatedStartAngle, endAngle: rotatedEndAngle });
+
+                    // Calculate panel measurements
+                    const panelAngle = endAngle - startAngle;
+                    const waistArcLength = (waistRadius * panelAngle).toFixed(2);
+                    const hemArcLength = (totalRadius * panelAngle).toFixed(2);
+                    const sideSeamLength = (totalRadius - waistRadius).toFixed(2);
+                    
+                    this.panelMeasurements.push({
+                        panel: i + 1,
+                        waistArc: waistArcLength,
+                        hemArc: hemArcLength,
+                        sideSeam: sideSeamLength
+                    });
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(offsetX, offsetY, totalRadius * scale, rotatedStartAngle, rotatedEndAngle);
+                    this.ctx.arc(offsetX, offsetY, waistRadius * scale, rotatedEndAngle, rotatedStartAngle, true);
+                    this.ctx.closePath();
+
+                    const isSelected = (this.selectedIndex === i || this.secondSelectedIndex === i);
+                    this.ctx.fillStyle = isSelected ? '#3498db' : (i % 2 === 0 ? '#ecf0f1' : '#bdc3c7');
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = isSelected ? '#2980b9' : '#7f8c8d';
+                    this.ctx.lineWidth = isSelected ? 3 : 1;
+                    this.ctx.stroke();
+
+                    // Draw dotted seam allowance lines
+                    this.ctx.setLineDash([3, 3]);
+                    this.ctx.strokeStyle = '#e74c3c';
+                    this.ctx.lineWidth = 1;
+                    
+                    // Waist seam allowance
+                    this.ctx.beginPath();
+                    this.ctx.arc(offsetX, offsetY, (waistRadius + waistSeam) * scale, rotatedStartAngle, rotatedEndAngle);
+                    this.ctx.stroke();
+                    
+                    // Hem seam allowance
+                    this.ctx.beginPath();
+                    this.ctx.arc(offsetX, offsetY, (totalRadius - hem) * scale, rotatedStartAngle, rotatedEndAngle);
+                    this.ctx.stroke();
+                    
+                    this.ctx.setLineDash([]);
+
+                    // Draw panel number - increased 2 sizes and prefixed with "P"
+                    const midAngle = (rotatedStartAngle + rotatedEndAngle) / 2;
+                    const labelRadius = ((waistRadius + totalRadius) / 2) * scale;
+                    const labelX = offsetX + Math.cos(midAngle) * labelRadius;
+                    const labelY = offsetY + Math.sin(midAngle) * labelRadius;
+                    
+                    this.ctx.fillStyle = '#2c3e50';
+                    this.ctx.font = 'bold 18px Arial'; // Increased from 14px to 18px
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(`P${i + 1}`, labelX, labelY); // Changed from number to P1, P2, etc.
+
+                    // Draw waist arc measurement - increased 2 sizes from 10px to 14px
+                    const waistLabelRadius = (waistRadius + waistSeam + 0.5) * scale;
+                    const waistLabelX = offsetX + Math.cos(midAngle) * waistLabelRadius;
+                    const waistLabelY = offsetY + Math.sin(midAngle) * waistLabelRadius;
+                    
+                    this.ctx.fillStyle = '#27ae60';
+                    this.ctx.font = '14px Arial'; // Increased from 10px to 14px
+                    this.ctx.fillText(`${waistArcLength}"`, waistLabelX, waistLabelY);
+
+                    // Draw hem arc measurement - increased 2 sizes from 10px to 14px
+                    const hemLabelRadius = (totalRadius - hem - 0.5) * scale;
+                    const hemLabelX = offsetX + Math.cos(midAngle) * hemLabelRadius;
+                    const hemLabelY = offsetY + Math.sin(midAngle) * hemLabelRadius;
+                    
+                    this.ctx.fillStyle = '#e74c3c';
+                    this.ctx.font = '14px Arial'; // Increased from 10px to 14px
+                    this.ctx.fillText(`${hemArcLength}"`, hemLabelX, hemLabelY);
+                }
+
+                // Update measurements list
+                this.updateMeasurementsList();
             }
 
-            resetPanels() {
-                this.customPanels = null;
-                this.updateSeamCount(12);
+            getRotatedBounds(multiplier, waistRadius, totalRadius, rotationAngle) {
+                const points = [];
+                const steps = 100;
+                
+                // Sample points along the outer arc
+                for (let i = 0; i <= steps; i++) {
+                    const angle = (i / steps) * multiplier * Math.PI + rotationAngle;
+                    points.push({
+                        x: Math.cos(angle) * totalRadius,
+                        y: Math.sin(angle) * totalRadius
+                    });
+                }
+                
+                // Sample points along the inner arc
+                for (let i = 0; i <= steps; i++) {
+                    const angle = (i / steps) * multiplier * Math.PI + rotationAngle;
+                    points.push({
+                        x: Math.cos(angle) * waistRadius,
+                        y: Math.sin(angle) * waistRadius
+                    });
+                }
+                
+                // Add center point
+                points.push({ x: 0, y: 0 });
+                
+                const minX = Math.min(...points.map(p => p.x));
+                const maxX = Math.max(...points.map(p => p.x));
+                const minY = Math.min(...points.map(p => p.y));
+                const maxY = Math.max(...points.map(p => p.y));
+                
+                return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
+            }
+
+            updateMeasurementsList() {
+                const measurementsList = document.getElementById('measurementsList');
+                measurementsList.innerHTML = '';
+                
+                this.panelMeasurements.forEach(measurement => {
+                    const div = document.createElement('div');
+                    div.className = 'panel-measurement-item';
+                    div.innerHTML = `
+                        <span class="panel-number">Panel ${measurement.panel}:</span>
+                        <span class="measurement-value">W:${measurement.waistArc}" H:${measurement.hemArc}" S:${measurement.sideSeam}"</span>
+                    `;
+                    measurementsList.appendChild(div);
+                });
             }
 
             bindEvents() {
@@ -753,37 +1033,89 @@
                         this.calculate();
                     });
                 });
-                [this.sideSeamInput, this.lengthInput, this.waistInput, this.waistSeamInput, this.hemInput].forEach(input => {
-                    input.addEventListener('input', () => this.calculate());
-                });
-                this.seamsInput.addEventListener('input', (e) => {
-                    let val = parseInt(e.target.value);
-                    if (isNaN(val) || val < 1) val = 1;
-                    this.customPanels = null;
-                    this.updateSeamCount(val);
-                });
-                this.resetBtn.addEventListener('click', () => this.reset());
-                this.undoBtn.addEventListener('click', () => this.undo());
-                document.getElementById('splitAll').addEventListener('click', () => { this.saveState(); this.splitAllPanels(); });
-                document.getElementById('mergeAll').addEventListener('click', () => { this.saveState(); this.mergeAllPanels(); });
-                document.getElementById('resetPanels').addEventListener('click', () => { this.saveState(); this.resetPanels(); });
+
+                this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+                
                 document.getElementById('splitSingle').addEventListener('click', () => {
-                    if (this.selectedIndex !== null) { this.saveState(); this.splitSinglePanel(this.selectedIndex); }
-                });
-                document.getElementById('mergeSingle').addEventListener('click', () => {
-                    if (this.selectedIndex !== null && this.secondSelectedIndex !== null) {
-                        this.saveState(); this.mergeTwoPanels(this.selectedIndex, this.secondSelectedIndex);
+                    if (this.selectedIndex !== null) {
+                        this.saveState();
+                        this.splitPanel(this.selectedIndex);
                     }
                 });
-                
-                this.canvas.addEventListener('mousedown', (e) => this.handleCanvasClick(e));
-                
-                this.canvas.addEventListener('touchstart', (e) => {
-                    if (e.cancelable) e.preventDefault(); 
-                    this.handleCanvasClick(e.touches[0]);
-                }, { passive: false });
 
-                window.addEventListener('resize', () => { this.initCanvas(); this.calculate(); });
+                document.getElementById('mergeSingle').addEventListener('click', () => {
+                    if (this.selectedIndex !== null && this.secondSelectedIndex !== null) {
+                        this.saveState();
+                        this.mergePanels(this.selectedIndex, this.secondSelectedIndex);
+                    }
+                });
+
+                document.getElementById('splitAll').addEventListener('click', () => {
+                    this.saveState();
+                    const newCount = this.customPanels ? this.customPanels.length * 2 : this.seams * 2;
+                    this.customPanels = null;
+                    this.updateSeamCount(newCount);
+                });
+
+                document.getElementById('mergeAll').addEventListener('click', () => {
+                    this.saveState();
+                    const newCount = Math.max(1, Math.floor((this.customPanels ? this.customPanels.length : this.seams) / 2));
+                    this.customPanels = null;
+                    this.updateSeamCount(newCount);
+                });
+
+                // Fixed reset panels functionality
+                document.getElementById('resetPanels').addEventListener('click', () => {
+                    this.saveState();
+                    this.customPanels = null;
+                    this.selectedIndex = null;
+                    this.secondSelectedIndex = null;
+                    this.calculate();
+                });
+
+                this.undoBtn.addEventListener('click', () => this.undo());
+                
+                // Fixed main reset button functionality
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.saveState();
+                    
+                    // Reset all input values
+                    this.seamsInput.value = 12;
+                    this.sideSeamInput.value = 0.375;
+                    this.lengthInput.value = 22;
+                    this.waistInput.value = 38.5;
+                    this.waistSeamInput.value = 0.375;
+                    this.hemInput.value = 1.5;
+                    
+                    // Reset sliders and display values
+                    ['seams','sideSeam','length','waist','waistSeam','hem'].forEach(id => {
+                        const input = document.getElementById(id);
+                        const slider = document.getElementById(id + 'Slider');
+                        const val = document.getElementById(id + 'Value');
+                        slider.value = input.value;
+                        val.textContent = input.value;
+                    });
+                    
+                    // Reset internal state
+                    this.seams = 12;
+                    this.customPanels = null;
+                    this.selectedIndex = null;
+                    this.secondSelectedIndex = null;
+                    this.history = [];
+                    this.setSkirtType('full');
+                    
+                    this.calculate();
+                    this.updateUndoButton();
+                });
+
+                document.getElementById('previewBtn').addEventListener('click', () => {
+                    this.generatePDF();
+                });
+
+                window.addEventListener('resize', () => {
+                    this.initCanvas();
+                    this.calculate();
+                });
             }
 
             handleCanvasClick(e) {
@@ -793,71 +1125,9 @@
                 
                 const waist = parseFloat(this.waistInput.value);
                 const sideSeam = parseFloat(this.sideSeamInput.value);
-                const adjustedWaist = waist + (sideSeam * 2);
-                let waistRadius;
-                let multiplier;
-                switch(this.skirtType) {
-                    case 'full': waistRadius = adjustedWaist / (2 * Math.PI); multiplier = 2; break;
-                    case 'three-quarter': waistRadius = adjustedWaist / (1.5 * Math.PI); multiplier = 1.5; break;
-                    case 'half': waistRadius = adjustedWaist / Math.PI; multiplier = 1; break;
-                    case 'third': waistRadius = adjustedWaist / (0.666 * Math.PI); multiplier = 0.666; break;
-                    case 'quarter': waistRadius = adjustedWaist / (0.5 * Math.PI); multiplier = 0.5; break;
-                }
-                const totalRadius = waistRadius + parseFloat(this.lengthInput.value) + parseFloat(this.hemInput.value);
-                
-                const bounds = this.getSkirtBounds(multiplier, totalRadius);
-                const padding = 20;
-                const availableWidth = this.canvas.width - padding * 2;
-                const availableHeight = this.canvas.height - padding * 2;
-                const scale = Math.min(availableWidth / (bounds.maxX - bounds.minX), availableHeight / (bounds.maxY - bounds.minY));
-                
-                const centerX = this.canvas.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale;
-                const centerY = this.canvas.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale;
-
-                const dx = x - centerX;
-                const dy = y - centerY;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                let angle = Math.atan2(dy, dx);
-                if (angle < 0) angle += 2 * Math.PI;
-
-                if (dist >= waistRadius * scale && dist <= totalRadius * scale) {
-                    const clickedIdx = this.panels.findIndex(p => {
-                        let start = p.startAngle;
-                        let end = p.endAngle;
-                        if (start > end) return angle >= start || angle <= end;
-                        return angle >= start && angle <= end;
-                    });
-                    if (clickedIdx !== -1) {
-                        if (this.selectedIndex === clickedIdx) {
-                            this.selectedIndex = this.secondSelectedIndex;
-                            this.secondSelectedIndex = null;
-                        } else if (this.secondSelectedIndex === clickedIdx) {
-                            this.secondSelectedIndex = null;
-                        } else {
-                            this.secondSelectedIndex = this.selectedIndex;
-                            this.selectedIndex = clickedIdx;
-                        }
-                        this.calculate();
-                    }
-                }
-            }
-
-            updateSeamCount(val) {
-                this.seams = val;
-                this.seamsInput.value = val;
-                this.seamsValue.textContent = val;
-                document.getElementById('seamsSlider').value = val;
-                this.calculate();
-            }
-
-            calculate() {
-                const waist = parseFloat(this.waistInput.value);
                 const length = parseFloat(this.lengthInput.value);
-                const sideSeam = parseFloat(this.sideSeamInput.value);
-                const waistSeam = parseFloat(this.waistSeamInput.value);
                 const hem = parseFloat(this.hemInput.value);
                 
-                const adjustedWaist = waist + (sideSeam * 2 * this.seams);
                 let multiplier;
                 switch(this.skirtType) {
                     case 'full': multiplier = 2; break;
@@ -866,133 +1136,251 @@
                     case 'third': multiplier = 0.666; break;
                     case 'quarter': multiplier = 0.5; break;
                 }
-                
+
+                const adjustedWaist = waist + (sideSeam * 2);
                 const waistRadius = adjustedWaist / (multiplier * Math.PI);
                 const totalRadius = waistRadius + length + hem;
-                const waistArc = adjustedWaist;
+                
+                // Apply rotation for bounds calculation
+                let rotationAngle = 0;
+                if (this.skirtType === 'half') {
+                    rotationAngle = Math.PI / 4;
+                } else if (this.skirtType === 'third') {
+                    rotationAngle = Math.PI / 3;
+                } else if (this.skirtType === 'quarter') {
+                    rotationAngle = Math.PI / 4;
+                }
+                
+                const bounds = this.getRotatedBounds(multiplier, waistRadius, totalRadius, rotationAngle);
+                const padding = window.innerWidth <= 768 ? 10 : 20;
+                const baseScale = Math.min((this.canvas.width - padding * 2) / bounds.width, (this.canvas.height - padding * 2) / bounds.height);
+                const scale = window.innerWidth <= 768 ? baseScale * 1.1 : baseScale;
+                const offsetX = (this.canvas.width / 2) - ((bounds.minX + bounds.maxX) / 2 * scale);
+                const offsetY = (this.canvas.height / 2) - ((bounds.minY + bounds.maxY) / 2 * scale);
 
-                this.waistRadiusEl.textContent = waistRadius.toFixed(2) + '"';
-                this.totalRadiusEl.textContent = totalRadius.toFixed(2) + '"';
-                this.waistArcEl.textContent = waistArc.toFixed(2) + '"';
+                const dx = x - offsetX;
+                const dy = y - offsetY;
+                const dist = Math.sqrt(dx * dx + dy * dy) / scale;
+                let angle = Math.atan2(dy, dx);
+                if (angle < 0) angle += Math.PI * 2;
 
-                this.generatePanels(multiplier);
-                this.draw(waistRadius, totalRadius, multiplier);
-            }
+                if (dist >= waistRadius && dist <= totalRadius) {
+                    const clickedIndex = this.panels.findIndex(p => {
+                        let start = p.startAngle % (Math.PI * 2);
+                        let end = p.endAngle % (Math.PI * 2);
+                        if (start > end) return angle >= start || angle <= end;
+                        return angle >= start && angle <= end;
+                    });
 
-            generatePanels(multiplier) {
-                const totalAngle = multiplier * Math.PI;
-                if (this.customPanels) {
-                    this.panels = this.customPanels.map(p => ({
-                        startAngle: p.start,
-                        endAngle: p.end
-                    }));
-                } else {
-                    this.panels = [];
-                    const step = totalAngle / this.seams;
-                    for (let i = 0; i < this.seams; i++) {
-                        this.panels.push({
-                            startAngle: i * step,
-                            endAngle: (i + 1) * step
-                        });
+                    if (clickedIndex !== -1) {
+                        if (this.selectedIndex === clickedIndex) {
+                            this.selectedIndex = this.secondSelectedIndex;
+                            this.secondSelectedIndex = null;
+                        } else if (this.secondSelectedIndex === clickedIndex) {
+                            this.secondSelectedIndex = null;
+                        } else if (this.selectedIndex === null) {
+                            this.selectedIndex = clickedIndex;
+                        } else {
+                            this.secondSelectedIndex = clickedIndex;
+                        }
+                        this.calculate();
                     }
                 }
             }
 
-            getSkirtBounds(multiplier, radius) {
-                const startAngle = 0;
-                const endAngle = multiplier * Math.PI;
-                let minX = radius, maxX = -radius, minY = radius, maxY = -radius;
-
-                const points = 100;
-                for (let i = 0; i <= points; i++) {
-                    const a = startAngle + (endAngle - startAngle) * (i / points);
-                    const x = Math.cos(a) * radius;
-                    const y = Math.sin(a) * radius;
-                    minX = Math.min(minX, x); maxX = Math.max(maxX, x);
-                    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            splitPanel(index) {
+                if (!this.customPanels) {
+                    this.generateInitialCustomPanels();
                 }
-                // Always include origin to avoid cutting inner radius
-                minX = Math.min(minX, 0); maxX = Math.max(maxX, 0);
-                minY = Math.min(minY, 0); maxY = Math.max(maxY, 0);
-
-                return { minX, maxX, minY, maxY };
-            }
-
-            draw(waistRadius, totalRadius, multiplier) {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                const bounds = this.getSkirtBounds(multiplier, totalRadius);
-                const padding = 30; // Safety margin
-                
-                const availableWidth = this.canvas.width - padding * 2;
-                const availableHeight = this.canvas.height - padding * 2;
-                
-                const scale = Math.min(
-                    availableWidth / (bounds.maxX - bounds.minX),
-                    availableHeight / (bounds.maxY - bounds.minY)
+                const panel = this.customPanels[index];
+                const mid = (panel.start + panel.end) / 2;
+                this.customPanels.splice(index, 1, 
+                    { start: panel.start, end: mid },
+                    { start: mid, end: panel.end }
                 );
-
-                // Re-center based on specific skirt bounding box
-                const centerX = this.canvas.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale;
-                const centerY = this.canvas.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale;
-
-                this.panels.forEach((panel, i) => {
-                    this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, totalRadius * scale, panel.startAngle, panel.endAngle);
-                    this.ctx.arc(centerX, centerY, waistRadius * scale, panel.endAngle, panel.startAngle, true);
-                    this.ctx.closePath();
-
-                    const isSelected = i === this.selectedIndex || i === this.secondSelectedIndex;
-                    this.ctx.fillStyle = isSelected ? '#3498db' : '#ecf0f1';
-                    this.ctx.fill();
-                    this.ctx.strokeStyle = isSelected ? '#2980b9' : '#bdc3c7';
-                    this.ctx.lineWidth = isSelected ? 3 : 1;
-                    this.ctx.stroke();
-
-                    // Draw labels
-                    const midAngle = (panel.startAngle + panel.endAngle) / 2;
-                    const labelR = (waistRadius + totalRadius) / 2 * scale;
-                    this.ctx.save();
-                    this.ctx.translate(centerX + Math.cos(midAngle) * labelR, centerY + Math.sin(midAngle) * labelR);
-                    this.ctx.rotate(midAngle + Math.PI / 2);
-                    this.ctx.fillStyle = isSelected ? 'white' : '#7f8c8d';
-                    this.ctx.font = 'bold 12px Segoe UI';
-                    this.ctx.textAlign = 'center';
-                    this.ctx.fillText(`P${i + 1}`, 0, 0);
-                    this.ctx.restore();
-                });
-            }
-
-            reset() {
-                this.customPanels = null;
-                this.seams = 12;
-                this.history = [];
-                this.updateUndoButton();
-                this.setSkirtType('full');
-                this.waistInput.value = 38.5;
-                this.lengthInput.value = 22;
-                this.sideSeamInput.value = 0.375;
-                this.waistSeamInput.value = 0.375;
-                this.hemInput.value = 1.5;
-                this.seamsInput.value = 12;
-                
-                // Refresh all slider displays
-                const inputs = ['waist', 'length', 'sideSeam', 'waistSeam', 'hem', 'seams'];
-                inputs.forEach(id => {
-                    const input = document.getElementById(id);
-                    const slider = document.getElementById(id + 'Slider');
-                    const value = document.getElementById(id + 'Value');
-                    if(slider) slider.value = input.value;
-                    if(value) value.textContent = input.value;
-                });
-                
                 this.selectedIndex = null;
                 this.secondSelectedIndex = null;
                 this.calculate();
             }
+
+            mergePanels(idx1, idx2) {
+                if (!this.customPanels) {
+                    this.generateInitialCustomPanels();
+                }
+                const p1 = this.customPanels[idx1];
+                const p2 = this.customPanels[idx2];
+                
+                const isAdjacent = Math.abs(p1.end - p2.start) < 0.001 || Math.abs(p2.end - p1.start) < 0.001;
+                
+                if (isAdjacent) {
+                    const newPanel = {
+                        start: Math.min(p1.start, p2.start),
+                        end: Math.max(p1.end, p2.end)
+                    };
+                    const indices = [idx1, idx2].sort((a, b) => b - a);
+                    this.customPanels.splice(indices[0], 1);
+                    this.customPanels.splice(indices[1], 1);
+                    this.customPanels.push(newPanel);
+                    this.customPanels.sort((a, b) => a.start - b.start);
+                    this.selectedIndex = null;
+                    this.secondSelectedIndex = null;
+                    this.calculate();
+                }
+            }
+
+            generateInitialCustomPanels() {
+                let multiplier;
+                switch(this.skirtType) {
+                    case 'full': multiplier = 2; break;
+                    case 'three-quarter': multiplier = 1.5; break;
+                    case 'half': multiplier = 1; break;
+                    case 'third': multiplier = 0.666; break;
+                    case 'quarter': multiplier = 0.5; break;
+                }
+                const panelSize = (multiplier * Math.PI) / this.seams;
+                this.customPanels = [];
+                for (let i = 0; i < this.seams; i++) {
+                    this.customPanels.push({
+                        start: i * panelSize,
+                        end: (i + 1) * panelSize
+                    });
+                }
+            }
+
+            generatePDF() {
+                const waist = parseFloat(this.waistInput.value);
+                const sideSeam = parseFloat(this.sideSeamInput.value);
+                const length = parseFloat(this.lengthInput.value);
+                const hem = parseFloat(this.hemInput.value);
+                const waistSeam = parseFloat(this.waistSeamInput.value);
+                const seams = this.seams;
+
+                let multiplier;
+                switch(this.skirtType) {
+                    case 'full': multiplier = 2; break;
+                    case 'three-quarter': multiplier = 1.5; break;
+                    case 'half': multiplier = 1; break;
+                    case 'third': multiplier = 0.666; break;
+                    case 'quarter': multiplier = 0.5; break;
+                }
+
+                const adjustedWaist = waist + (sideSeam * 2);
+                const waistRadius = adjustedWaist / (multiplier * Math.PI);
+                const totalRadius = waistRadius + length + hem;
+                const totalHemArc = (totalRadius * multiplier * Math.PI);
+                const waistArc = adjustedWaist + (waistSeam * 2);
+                const panelAngle = (multiplier * Math.PI) / seams;
+                const panelWaistArc = waistRadius * panelAngle;
+                const panelHemArc = totalRadius * panelAngle;
+                const sideSeamLength = totalRadius - waistRadius;
+
+                // Create a new window with the PDF content
+                const pdfWindow = window.open('', '_blank');
+                pdfWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Circle Skirt Pattern</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            .pdf-header { text-align: center; margin-bottom: 30px; }
+                            .pdf-header h1 { color: #2c3e50; }
+                            .pdf-content { max-width: 800px; margin: 0 auto; }
+                            .measurements-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                            .measurements-table th, .measurements-table td { border: 1px solid #333; padding: 8px; text-align: center; }
+                            .measurements-table th { background: #f0f0f0; }
+                            .panel-measurements { margin: 30px 0; }
+                            .instructions { margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 5px; }
+                            .instructions h3 { margin-top: 0; }
+                            @media print { body { padding: 0; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="pdf-content">
+                            <div class="pdf-header">
+                                <h1>Circle Skirt Pattern</h1>
+                                <p>Generated on ${new Date().toLocaleDateString()}</p>
+                            </div>
+                            
+                            <h2>Pattern Specifications</h2>
+                            <table class="measurements-table">
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Value</th>
+                                </tr>
+                                <tr>
+                                    <td>Skirt Type</td>
+                                    <td>${this.skirtType.charAt(0).toUpperCase() + this.skirtType.slice(1)} Circle</td>
+                                </tr>
+                                <tr>
+                                    <td>Waist Circumference</td>
+                                    <td>${waist}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Skirt Length</td>
+                                    <td>${length}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Number of Panels</td>
+                                    <td>${seams}</td>
+                                </tr>
+                                <tr>
+                                    <td>Waist Radius</td>
+                                    <td>${waistRadius.toFixed(2)}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Radius</td>
+                                    <td>${totalRadius.toFixed(2)}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Side Seam Allowance</td>
+                                    <td>${sideSeam}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Waist Seam Allowance</td>
+                                    <td>${waistSeam}"</td>
+                                </tr>
+                                <tr>
+                                    <td>Hem Allowance</td>
+                                    <td>${hem}"</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="panel-measurements">
+                                <h2>Panel Measurements (${seams} Panels Total)</h2>
+                                <p><strong>Each Panel:</strong></p>
+                                <ul>
+                                    <li>Waist Arc: ${panelWaistArc.toFixed(2)}"</li>
+                                    <li>Hem Arc: ${panelHemArc.toFixed(2)}"</li>
+                                    <li>Side Seam Length: ${sideSeamLength.toFixed(2)}"</li>
+                                </ul>
+                                <p><strong>Total Measurements:</strong></p>
+                                <ul>
+                                    <li>Total Waist Arc: ${waistArc.toFixed(2)}"</li>
+                                    <li>Total Hem Arc: ${totalHemArc.toFixed(2)}"</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="instructions">
+                                <h3>Instructions for Drafting:</h3>
+                                <p>1. Draw a circle with radius: ${waistRadius.toFixed(2)}" (waist line)</p>
+                                <p>2. Draw another circle with radius: ${totalRadius.toFixed(2)}" (hem line)</p>
+                                <p>3. Divide the circle into ${seams} equal sections</p>
+                                <p>4. Cut ${seams} panels using the measurements above</p>
+                                <p>5. Add seam allowances as indicated by dotted lines on pattern</p>
+                                <p>6. Sew panels together along side seams</p>
+                                <p>7. Add waistband and hem according to seam allowances</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                pdfWindow.document.close();
+                pdfWindow.print();
+            }
         }
 
-        window.onload = () => new CircleSkirtCalculator();
+        const app = new CircleSkirtCalculator();
     </script>
 </body>
 </html>
