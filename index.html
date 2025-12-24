@@ -289,7 +289,22 @@
             .panel-controls { margin-top: 8px; gap: 6px; }
             .panel-btn { font-size: 13px; padding: 14px 4px; }
             .input-section { margin-top: 0; }
-            .dot { width: 44px; height: 44px; } /* Slightly larger for mobile tap targets */
+            .dot { width: 44px; height: 44px; }
+
+            /* Mobile Specific Row Optimization */
+            .input-with-slider {
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            .number-input {
+                width: 70px; /* Small fixed width for the box */
+                flex-shrink: 0;
+            }
+            .slider-container {
+                flex-grow: 1;
+                height: 30px;
+            }
         }
     </style>
 </head>
@@ -643,7 +658,6 @@
                     }
                 });
                 
-                // Add touch support for mobile
                 this.canvas.addEventListener('mousedown', (e) => this.handleCanvasClick(e));
                 this.canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
@@ -788,94 +802,82 @@
                 }
 
                 if (this.customPanels) {
-                    this.panels = this.customPanels.map((p, i) => ({
-                        id: i + 1,
+                    this.panels = this.customPanels.map(p => ({
                         startAngle: p.start,
-                        endAngle: p.end,
-                        waistRadius,
-                        totalRadius
+                        endAngle: p.end
                     }));
                 } else {
                     this.panels = [];
-                    const angleStep = totalAngle / this.seams;
-                    for(let i = 0; i < this.seams; i++) {
+                    const anglePerPanel = totalAngle / this.seams;
+                    for (let i = 0; i < this.seams; i++) {
                         this.panels.push({
-                            id: i + 1,
-                            startAngle: i * angleStep,
-                            endAngle: (i + 1) * angleStep,
-                            waistRadius,
-                            totalRadius
+                            startAngle: i * anglePerPanel,
+                            endAngle: (i + 1) * anglePerPanel
                         });
                     }
                 }
             }
 
             drawSkirt(waistRadius, totalRadius) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
                 const scale = Math.min(centerX, centerY) * 0.95 / totalRadius;
                 
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
                 this.panels.forEach((panel, index) => {
-                    const isSelected = index === this.selectedIndex || index === this.secondSelectedIndex;
+                    const isSelected = (index === this.selectedIndex || index === this.secondSelectedIndex);
                     
                     this.ctx.beginPath();
                     this.ctx.arc(centerX, centerY, totalRadius * scale, panel.startAngle, panel.endAngle);
                     this.ctx.arc(centerX, centerY, waistRadius * scale, panel.endAngle, panel.startAngle, true);
                     this.ctx.closePath();
                     
-                    this.ctx.fillStyle = isSelected ? '#3498db' : '#ecf0f1';
+                    this.ctx.fillStyle = isSelected ? '#3498db' : (index % 2 === 0 ? '#f8f9fa' : '#e9ecef');
                     this.ctx.fill();
+                    
                     this.ctx.strokeStyle = isSelected ? '#2980b9' : '#bdc3c7';
                     this.ctx.lineWidth = isSelected ? 3 : 1;
                     this.ctx.stroke();
-
-                    // Text labels
+                    
                     const midAngle = (panel.startAngle + (panel.startAngle > panel.endAngle ? panel.endAngle + 2*Math.PI : panel.endAngle)) / 2;
                     const textRadius = (waistRadius + totalRadius) / 2 * scale;
-                    this.ctx.save();
-                    this.ctx.translate(centerX + Math.cos(midAngle) * textRadius, centerY + Math.sin(midAngle) * textRadius);
+                    const tx = centerX + Math.cos(midAngle) * textRadius;
+                    const ty = centerY + Math.sin(midAngle) * textRadius;
+                    
                     this.ctx.fillStyle = isSelected ? 'white' : '#7f8c8d';
                     this.ctx.font = 'bold 12px sans-serif';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText(panel.id, 0, 5);
-                    this.ctx.restore();
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(index + 1, tx, ty);
                 });
             }
 
             reset() {
                 this.saveState();
-                this.setSkirtType('full');
-                this.seams = 12;
+                this.customPanels = null;
                 this.seamsInput.value = 12;
-                this.seamsValue.textContent = 12;
-                document.getElementById('seamsSlider').value = 12;
                 this.sideSeamInput.value = 0.375;
                 this.lengthInput.value = 22;
                 this.waistInput.value = 38.5;
                 this.waistSeamInput.value = 0.375;
                 this.hemInput.value = 1.5;
-                this.customPanels = null;
-                this.selectedIndex = null;
-                this.secondSelectedIndex = null;
                 
-                const sliderPairs = ['sideSeam', 'length', 'waist', 'waistSeam', 'hem'];
-                sliderPairs.forEach(id => {
-                    const input = document.getElementById(id);
-                    const slider = document.getElementById(id + 'Slider');
-                    const display = document.getElementById(id + 'Value');
-                    slider.value = input.value;
-                    display.textContent = input.value;
+                const sliders = ['seamsSlider', 'sideSeamSlider', 'lengthSlider', 'waistSlider', 'waistSeamSlider', 'hemSlider'];
+                sliders.forEach(id => {
+                    const slider = document.getElementById(id);
+                    slider.value = slider.getAttribute('value');
+                    document.getElementById(id.replace('Slider', 'Value')).textContent = slider.value;
                 });
                 
+                this.setSkirtType('full');
+                this.selectedIndex = null;
+                this.secondSelectedIndex = null;
                 this.calculate();
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            window.app = new CircleSkirtCalculator();
-        });
+        window.onload = () => new CircleSkirtCalculator();
     </script>
 </body>
 </html>
